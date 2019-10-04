@@ -121,7 +121,8 @@ function createCanvas( w, h ) {
     canvas.id = "canvas";
     ctx = canvas.getContext( "2d" );
     ctx.fillStyle = "black"; ctx.fillRect( 0, 0, wid, hei );
-    document.body.appendChild( canvas ); 
+    var div = document.getElementById("maze")
+    div.appendChild( canvas ); 
 }
 function init() {
     cols = 120; rows = 80;
