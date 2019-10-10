@@ -8,6 +8,7 @@ function drawMaze() {
                 case 2: ctx.fillStyle = "red"; break;
                 case 3: ctx.fillStyle = "yellow"; break;
                 case 4: ctx.fillStyle = "#500000"; break;
+                case 8: ctx.fillStyle = "blue"; break;
             }
             ctx.fillRect( grid * i, grid * j, grid, grid  );
         }
@@ -21,22 +22,23 @@ function drawBlock(sx, sy, a) {
         case 2: ctx.fillStyle = "red"; break;
         case 3: ctx.fillStyle = "yellow"; break;
         case 4: ctx.fillStyle = "#500000"; break;
+        case 8: ctx.fillStyle = "blue"; break;
     }
     ctx.fillRect( grid * sx, grid * sy, grid, grid  );
 }
 
 function getFNeighbours( sx, sy, a ) {
     var n = [];
-    if( sx - 1 > 0 && maze[sx - 1][sy] == a ) {
+    if( sx - 1 > 0 && maze[sx - 1][sy] % 8 == a ) {
         n.push( { x:sx - 1, y:sy } );
     }
-    if( sx + 1 < cols - 1 && maze[sx + 1][sy] == a ) {
+    if( sx + 1 < cols - 1 && maze[sx + 1][sy] % 8 == a ) {
         n.push( { x:sx + 1, y:sy } );
     }
-    if( sy - 1 > 0 && maze[sx][sy - 1] == a ) {
+    if( sy - 1 > 0 && maze[sx][sy - 1] % 8 == a ) {
         n.push( { x:sx, y:sy - 1 } );
     }
-    if( sy + 1 < rows - 1 && maze[sx][sy + 1] == a ) {
+    if( sy + 1 < rows - 1 && maze[sx][sy + 1] % 8 == a ) {
         n.push( { x:sx, y:sy + 1 } );
     }
     return n;
@@ -74,9 +76,11 @@ function getCursorPos( event ) {
     if( maze[x][y] ) return;
     if( start.x == -1 ) {
         start = { x: x, y: y };
+        maze[start.x][start.y] = 8;
+        drawMaze();
     } else {
         end = { x: x, y: y };
-        maze[start.x][start.y] = 2;
+        maze[end.x][end.y] = 8;
         solveMaze1();
     }
 }
@@ -228,8 +232,9 @@ function onCreate() {
     if(mazeType == "Maze1") {
         cols = cols + 1 - cols % 2;
         rows = rows + 1 - rows % 2;    
-        maze = createArray( cols, rows );
     }
+
+    maze = createArray( cols, rows );
 
     var canvas = document.getElementById("canvas");
     canvas.width = wid;
@@ -258,6 +263,7 @@ function onCreate() {
     }
     else {
 
+        density = document.getElementById("density").value / 100;
         start.x = 0;
         start.x = 0;
 
@@ -269,5 +275,14 @@ function onCreate() {
 
             createMaze2NonAni();
         }
+    }
+}
+
+function onSltType() {
+    if(document.getElementById("sltType").value == "Maze2") {
+        document.getElementById("density").removeAttribute("disabled");
+    }
+    else {
+        document.getElementById("density").setAttribute("disabled", "disabled");
     }
 }
