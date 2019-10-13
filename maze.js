@@ -387,10 +387,11 @@ function createMaze2(ctx) {
 
     var r = Math.random();
 
-    maze[start[0].x][start[0].y] = r < density ? 0 : 1;
+    mazes[0][start[0].x][start[0].y] = r < density ? 0 : 1;
+    mazes[1][start[0].x][start[0].y] = r < density ? 0 : 1;
     
-    drawMaze(ctxs[0]);
-    drawMaze(ctxs[1]);
+    drawMaze(0);
+    drawMaze(1);
 
     if(start[0].x == (cols - 1) && start[0].y == (rows - 1)){
 
