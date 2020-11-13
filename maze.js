@@ -1,4 +1,9 @@
-var ctxs, wid, hei, cols, rows, mazes, stacks = [], start = [{x:-1, y:-1}, {x:-1, y:-1}], end = [{x:-1, y:-1}, {x:-1, y:-1}],grid = 8, padding = 16, s, density=0.5, count=2;
+var ctxs, wid, hei, cols, rows, mazes, stacks = [];
+var quadSteps=[{dx: 0, dy: -1}, {dx: 1, dy: 0}, {dx: 0, dy: 1}, {dx: -1, dy: 0}];
+var octSteps=[{dx: -1, dy: -1}, {dx: 0, dy: -1}, {dx: 1, dy: -1}, {dx: 1, dy: 0}, {dx: 1, dy: 1}, {dx: 0, dy: 1}, {dx: -1, dy: 1}, {dx: -1, dy: 0}];
+var start = [{x:-1, y:-1}, {x:-1, y:-1}], end = [{x:-1, y:-1}, {x:-1, y:-1}],grid = 8;
+var padding = 16, s, density=0.5, count=2;
+
 function drawMaze(index) {
     for( var i = 0; i < cols; i++ ) {
         for( var j = 0; j < rows; j++ ) {
@@ -31,18 +36,14 @@ function drawBlock(ctx, sx, sy, a) {
 
 function getNextStopForMaze1( index, sx, sy, a ) {
     var n = [];
-    if( sx - 1 > 0 && mazes[index][sx - 1][sy] % 8 == a ) {
-        n.push( { x:sx - 1, y:sy } );
-    }
-    if( sx + 1 < cols - 1 && mazes[index][sx + 1][sy] % 8 == a ) {
-        n.push( { x:sx + 1, y:sy } );
-    }
-    if( sy - 1 > 0 && mazes[index][sx][sy - 1] % 8 == a ) {
-        n.push( { x:sx, y:sy - 1 } );
-    }
-    if( sy + 1 < rows - 1 && mazes[index][sx][sy + 1] % 8 == a ) {
-        n.push( { x:sx, y:sy + 1 } );
-    }
+
+    quadSteps.forEach(step => {
+        if(sx + step.dx > 0 && sx + step.dx < cols - 1 && sy + step.dy > 0 && sy + step.dy < rows - 1 &&
+            mazes[index][sx + step.dx][sy + step.dy] % 8 == a){
+            n.push({x: sx + step.dx, y: sy + step.dy});
+        }
+    });
+
     return n;
 }
 
@@ -51,130 +52,31 @@ function getOptimizedNextStopForMaze1(index, sx, sy, a) {
     var n = [];
     var dx = end[index].x - sx;
     var dy = end[index].y - sy;
+    var min = cols > rows ? cols : rows;
+    min =  min * min;
+    var baseline = (end[index].x - sx) * (end[index].x - sx) + (end[index].y - sy) * (end[index].y - sy);
 
-    if(dx >= 0) {
-        if(dy >= 0) {
-            if(dy >= dx) {
-                if(mazes[index][sx][sy + 1] % 8 == a) {
-                    n.push({x:sx, y:sy + 1})
-                }
-                if(mazes[index][sx + 1][sy] % 8 == a) {
-                    n.push({x:sx + 1, y:sy})
-                }
-                if(mazes[index][sx - 1][sy] % 8 == a) {
-                    n.push({x:sx - 1, y:sy})
-                }
-                if(mazes[index][sx][sy - 1] % 8 == a) {
-                    n.push({x:sx, y:sy - 1})
-                }
-            }
-            else {
-                if(mazes[index][sx + 1][sy] % 8 == a) {
-                    n.push({x:sx + 1, y:sy})
-                }
-                if(mazes[index][sx][sy + 1] % 8 == a) {
-                    n.push({x:sx, y:sy + 1})
-                }
-                if(mazes[index][sx][sy - 1] % 8 == a) {
-                    n.push({x:sx, y:sy - 1})
-                }
-                if(mazes[index][sx - 1][sy] % 8 == a) {
-                    n.push({x:sx - 1, y:sy})
-                }
-            }
-        }
-        else {
-            if(-1 * dy >= dx) {
-                if(mazes[index][sx][sy - 1] % 8 == a) {
-                    n.push({x:sx, y:sy - 1})
-                }
-                if(mazes[index][sx + 1][sy] % 8 == a) {
-                    n.push({x:sx + 1, y:sy})
-                }
-                if(mazes[index][sx - 1][sy] % 8 == a) {
-                    n.push({x:sx - 1, y:sy})
-                }
-                if(mazes[index][sx][sy + 1] % 8 == a) {
-                    n.push({x:sx, y:sy + 1})
-                }
-            }
-            else {
-                if(mazes[index][sx + 1][sy] % 8 == a) {
-                    n.push({x:sx + 1, y:sy})
-                }
-                if(mazes[index][sx][sy - 1] % 8 == a) {
-                    n.push({x:sx, y:sy - 1})
-                }
-                if(mazes[index][sx][sy + 1] % 8 == a) {
-                    n.push({x:sx, y:sy + 1})
-                }
-                if(mazes[index][sx - 1][sy] % 8 == a) {
-                    n.push({x:sx - 1, y:sy})
-                }
+    var pos = -1;
+
+    for (let i = 0; i < quadSteps.length; i ++) {
+        const step = quadSteps[i];
+
+        if(sx + step.dx > 0 && sx + step.dx < cols - 1 && sy + step.dy > 0 && sy + step.dy < rows -1 &&
+            mazes[index][sx + step.dx][sy + step.dy] % 8 == a){
+
+            distance = (end[index].x - sx - step.dx) * (end[index].x - sx - step.dx) + 
+                        (end[index].y - sy - step.dy) * (end[index].y - sy - step.dy);
+    
+            ds = distance - baseline;
+            if (ds < min) {
+                pos = i;
+                min  = ds;
             }
         }
     }
-    else {
-        if(dy < 0) {
-            if(dy <= dx) {
-                if(mazes[index][sx][sy - 1] % 8 == a) {
-                    n.push({x:sx, y:sy - 1})
-                }
-                if(mazes[index][sx - 1][sy] % 8 == a) {
-                    n.push({x:sx - 1, y:sy})
-                }
-                if(mazes[index][sx + 1][sy] % 8 == a) {
-                    n.push({x:sx + 1, y:sy})
-                }
-                if(mazes[index][sx][sy + 1] % 8 == a) {
-                    n.push({x:sx, y:sy + 1})
-                }
-            }
-            else {
-                if(mazes[index][sx - 1][sy] % 8 == a) {
-                    n.push({x:sx - 1, y:sy})
-                }
-                if(mazes[index][sx][sy - 1] % 8 == a) {
-                    n.push({x:sx, y:sy - 1})
-                }
-                if(mazes[index][sx][sy + 1] % 8 == a) {
-                    n.push({x:sx, y:sy + 1})
-                }
-                if(mazes[index][sx + 1][sy] % 8 == a) {
-                    n.push({x:sx + 1, y:sy})
-                }
-            }
-        }
-        else {
-            if(dy >= dx * -1) {
-                if(mazes[index][sx][sy + 1] % 8 == a) {
-                    n.push({x:sx, y:sy + 1})
-                }
-                if(mazes[index][sx - 1][sy] % 8 == a) {
-                    n.push({x:sx - 1, y:sy})
-                }
-                if(mazes[index][sx + 1][sy] % 8 == a) {
-                    n.push({x:sx + 1, y:sy})
-                }
-                if(mazes[index][sx][sy - 1] % 8 == a) {
-                    n.push({x:sx, y:sy - 1})
-                }
-            }
-            else {
-                if(mazes[index][sx - 1][sy] % 8 == a) {
-                    n.push({x:sx - 1, y:sy})
-                }
-                if(mazes[index][sx][sy + 1] % 8 == a) {
-                    n.push({x:sx, y:sy + 1})
-                }
-                if(mazes[index][sx][sy - 1] % 8 == a) {
-                    n.push({x:sx, y:sy - 1})
-                }
-                if(mazes[index][sx + 1][sy] % 8 == a) {
-                    n.push({x:sx + 1, y:sy})
-                }
-            }
-        }
+
+    if (pos > -1) {
+        n.push({x: sx + quadSteps[pos].dx, y: sy + quadSteps[pos].dy});
     }
 
     return n; 
@@ -182,30 +84,14 @@ function getOptimizedNextStopForMaze1(index, sx, sy, a) {
 
 function getNextStopForMaze2( index, sx, sy, a ) {
     var n = [];
-    if( sx - 1 > -1 && mazes[index][sx - 1][sy] % 8 == a ) {
-        n.push( { x:sx - 1, y:sy } );
-    }
-    if( sx - 1 > -1 && sy - 1 > -1 && mazes[index][sx - 1][sy - 1] % 8 == a ) {
-        n.push( { x:sx - 1, y:sy - 1} );
-    }
-    if( sy - 1 > -1 && mazes[index][sx][sy - 1] % 8 == a ) {
-        n.push( { x:sx, y:sy - 1 } );
-    }
-    if( sx + 1 < cols && sy - 1 > -1 && mazes[index][sx + 1][sy - 1] % 8 == a ) {
-        n.push( { x:sx + 1, y:sy - 1} );
-    }
-    if( sx + 1 < cols && mazes[index][sx + 1][sy] % 8 == a ) {
-        n.push( { x:sx + 1, y:sy } );
-    }
-    if( sx + 1 < cols && sy + 1 < rows && mazes[index][sx + 1][sy + 1] % 8 == a ) {
-        n.push( { x:sx + 1, y:sy + 1} );
-    }
-    if( sy + 1 < rows && mazes[index][sx][sy + 1] % 8 == a ) {
-        n.push( { x:sx, y:sy + 1 } );
-    }
-    if( sx - 1 > -1 && sy + 1 < rows && mazes[index][sx - 1][sy + 1] % 8 == a ) {
-        n.push( { x:sx - 1, y:sy + 1} );
-    }
+
+    octSteps.forEach(step => {
+        if(sx + step.dx > -1 && sx + step.dx < cols && sy + step.dy > -1 && sy + step.dy < rows &&
+            mazes[index][sx + step.dx][sy + step.dy] % 8 == a){
+            n.push({x: sx + step.dx, y: sy + step.dy});
+        }
+    });
+
     return n;
 }
 
@@ -214,130 +100,31 @@ function getOptimizedNextStopForMaze2(index, sx, sy, a) {
     var n = [];
     var dx = end[index].x - sx;
     var dy = end[index].y - sy;
+    var min = cols > rows ? cols : rows;
+    min =  min * min;
+    var baseline = (end[index].x - sx) * (end[index].x - sx) + (end[index].y - sy) * (end[index].y - sy);
 
-    if(dx >= 0) {
-        if(dy >= 0) {
-            if(dy >= dx) {
-                if(mazes[index][sx][sy + 1] % 8 == a) {
-                    n.push({x:sx, y:sy + 1})
-                }
-                if(mazes[index][sx + 1][sy] % 8 == a) {
-                    n.push({x:sx + 1, y:sy})
-                }
-                if(mazes[index][sx - 1][sy] % 8 == a) {
-                    n.push({x:sx - 1, y:sy})
-                }
-                if(mazes[index][sx][sy - 1] % 8 == a) {
-                    n.push({x:sx, y:sy - 1})
-                }
-            }
-            else {
-                if(mazes[index][sx + 1][sy] % 8 == a) {
-                    n.push({x:sx + 1, y:sy})
-                }
-                if(mazes[index][sx][sy + 1] % 8 == a) {
-                    n.push({x:sx, y:sy + 1})
-                }
-                if(mazes[index][sx][sy - 1] % 8 == a) {
-                    n.push({x:sx, y:sy - 1})
-                }
-                if(mazes[index][sx - 1][sy] % 8 == a) {
-                    n.push({x:sx - 1, y:sy})
-                }
-            }
-        }
-        else {
-            if(-1 * dy >= dx) {
-                if(mazes[index][sx][sy - 1] % 8 == a) {
-                    n.push({x:sx, y:sy - 1})
-                }
-                if(mazes[index][sx + 1][sy] % 8 == a) {
-                    n.push({x:sx + 1, y:sy})
-                }
-                if(mazes[index][sx - 1][sy] % 8 == a) {
-                    n.push({x:sx - 1, y:sy})
-                }
-                if(mazes[index][sx][sy + 1] % 8 == a) {
-                    n.push({x:sx, y:sy + 1})
-                }
-            }
-            else {
-                if(mazes[index][sx + 1][sy] % 8 == a) {
-                    n.push({x:sx + 1, y:sy})
-                }
-                if(mazes[index][sx][sy - 1] % 8 == a) {
-                    n.push({x:sx, y:sy - 1})
-                }
-                if(mazes[index][sx][sy + 1] % 8 == a) {
-                    n.push({x:sx, y:sy + 1})
-                }
-                if(mazes[index][sx - 1][sy] % 8 == a) {
-                    n.push({x:sx - 1, y:sy})
-                }
+    var pos = -1;
+
+    for (let i = 0; i < octSteps.length; i ++) {
+        const step = octSteps[i];
+
+        if(sx + step.dx > -1 && sx + step.dx < cols && sy + step.dy > -1 && sy + step.dy < rows &&
+            mazes[index][sx + step.dx][sy + step.dy] % 8 == a){
+
+            distance = (end[index].x - sx - step.dx) * (end[index].x - sx - step.dx) + 
+                        (end[index].y - sy - step.dy) * (end[index].y - sy - step.dy);
+    
+            ds = distance - baseline;
+            if (ds < min) {
+                pos = i;
+                min  = ds;
             }
         }
     }
-    else {
-        if(dy < 0) {
-            if(dy <= dx) {
-                if(mazes[index][sx][sy - 1] % 8 == a) {
-                    n.push({x:sx, y:sy - 1})
-                }
-                if(mazes[index][sx - 1][sy] % 8 == a) {
-                    n.push({x:sx - 1, y:sy})
-                }
-                if(mazes[index][sx + 1][sy] % 8 == a) {
-                    n.push({x:sx + 1, y:sy})
-                }
-                if(mazes[index][sx][sy + 1] % 8 == a) {
-                    n.push({x:sx, y:sy + 1})
-                }
-            }
-            else {
-                if(mazes[index][sx - 1][sy] % 8 == a) {
-                    n.push({x:sx - 1, y:sy})
-                }
-                if(mazes[index][sx][sy - 1] % 8 == a) {
-                    n.push({x:sx, y:sy - 1})
-                }
-                if(mazes[index][sx][sy + 1] % 8 == a) {
-                    n.push({x:sx, y:sy + 1})
-                }
-                if(mazes[index][sx + 1][sy] % 8 == a) {
-                    n.push({x:sx + 1, y:sy})
-                }
-            }
-        }
-        else {
-            if(dy >= dx * -1) {
-                if(mazes[index][sx][sy + 1] % 8 == a) {
-                    n.push({x:sx, y:sy + 1})
-                }
-                if(mazes[index][sx - 1][sy] % 8 == a) {
-                    n.push({x:sx - 1, y:sy})
-                }
-                if(mazes[index][sx + 1][sy] % 8 == a) {
-                    n.push({x:sx + 1, y:sy})
-                }
-                if(mazes[index][sx][sy - 1] % 8 == a) {
-                    n.push({x:sx, y:sy - 1})
-                }
-            }
-            else {
-                if(mazes[index][sx - 1][sy] % 8 == a) {
-                    n.push({x:sx - 1, y:sy})
-                }
-                if(mazes[index][sx][sy + 1] % 8 == a) {
-                    n.push({x:sx, y:sy + 1})
-                }
-                if(mazes[index][sx][sy - 1] % 8 == a) {
-                    n.push({x:sx, y:sy - 1})
-                }
-                if(mazes[index][sx + 1][sy] % 8 == a) {
-                    n.push({x:sx + 1, y:sy})
-                }
-            }
-        }
+
+    if (pos > -1) {
+        n.push({x: sx + octSteps[pos].dx, y: sy + octSteps[pos].dy});
     }
 
     return n; 
@@ -487,7 +274,7 @@ function getCursorPos( event ) {
         } else {
 
             solveMaze2(0);
-            solveMaze2New(1);
+            solveMaze2Optimized(1);
         }
     }
 }
