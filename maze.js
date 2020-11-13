@@ -34,43 +34,42 @@ function drawBlock(ctx, sx, sy, a) {
     ctx.fillRect( grid * sx, grid * sy, grid, grid  );
 }
 
-function getNextStopForMaze1( index, sx, sy, a ) {
+function getNextStepForMaze1( index, sx, sy, a ) {
     var n = [];
 
-    quadSteps.forEach(step => {
+    for (let i = 0; i < quadSteps.length; i++) {
+        const step = quadSteps[i];
+        
         if(sx + step.dx > 0 && sx + step.dx < cols - 1 && sy + step.dy > 0 && sy + step.dy < rows - 1 &&
             mazes[index][sx + step.dx][sy + step.dy] % 8 == a){
             n.push({x: sx + step.dx, y: sy + step.dy});
-        }
-    });
 
+            break;
+        }
+    }
     return n;
 }
 
-function getOptimizedNextStopForMaze1(index, sx, sy, a) {
+function getOptimizedNextStepForMaze1(index, sx, sy, a) {
 
     var n = [];
-    var dx = end[index].x - sx;
-    var dy = end[index].y - sy;
     var min = cols > rows ? cols : rows;
-    min =  min * min;
-    var baseline = (end[index].x - sx) * (end[index].x - sx) + (end[index].y - sy) * (end[index].y - sy);
+    min =  2 * min * min;
 
     var pos = -1;
 
     for (let i = 0; i < quadSteps.length; i ++) {
         const step = quadSteps[i];
 
-        if(sx + step.dx > 0 && sx + step.dx < cols - 1 && sy + step.dy > 0 && sy + step.dy < rows -1 &&
+        if(sx + step.dx > -1 && sx + step.dx < cols && sy + step.dy > -1 && sy + step.dy < rows &&
             mazes[index][sx + step.dx][sy + step.dy] % 8 == a){
 
             distance = (end[index].x - sx - step.dx) * (end[index].x - sx - step.dx) + 
                         (end[index].y - sy - step.dy) * (end[index].y - sy - step.dy);
     
-            ds = distance - baseline;
-            if (ds < min) {
+            if (distance < min) {
                 pos = i;
-                min  = ds;
+                min = distance;
             }
         }
     }
@@ -82,28 +81,29 @@ function getOptimizedNextStopForMaze1(index, sx, sy, a) {
     return n; 
 }
 
-function getNextStopForMaze2( index, sx, sy, a ) {
+function getNextStepForMaze2( index, sx, sy, a ) {
     var n = [];
 
-    octSteps.forEach(step => {
-        if(sx + step.dx > -1 && sx + step.dx < cols && sy + step.dy > -1 && sy + step.dy < rows &&
+    for (let i = 0; i < octSteps.length; i++) {
+        const step = octSteps[i];
+        
+        if(sx + step.dx > 0 && sx + step.dx < cols - 1 && sy + step.dy > 0 && sy + step.dy < rows - 1 &&
             mazes[index][sx + step.dx][sy + step.dy] % 8 == a){
             n.push({x: sx + step.dx, y: sy + step.dy});
-        }
-    });
 
+            break;
+        }
+    }
     return n;
 }
 
-function getOptimizedNextStopForMaze2(index, sx, sy, a) {
+function getOptimizedNextStepForMaze2(index, sx, sy, a) {
 
     var n = [];
     var dx = end[index].x - sx;
     var dy = end[index].y - sy;
     var min = cols > rows ? cols : rows;
-    min =  min * min;
-    var baseline = (end[index].x - sx) * (end[index].x - sx) + (end[index].y - sy) * (end[index].y - sy);
-
+    min = 2 * min * min;
     var pos = -1;
 
     for (let i = 0; i < octSteps.length; i ++) {
@@ -115,10 +115,9 @@ function getOptimizedNextStopForMaze2(index, sx, sy, a) {
             distance = (end[index].x - sx - step.dx) * (end[index].x - sx - step.dx) + 
                         (end[index].y - sy - step.dy) * (end[index].y - sy - step.dy);
     
-            ds = distance - baseline;
-            if (ds < min) {
+            if (distance < min) {
                 pos = i;
-                min  = ds;
+                min = distance;
             }
         }
     }
@@ -142,7 +141,8 @@ function solveMaze1(index) {
         drawMaze(index);
         return;
     }
-    var neighbours = getNextStopForMaze1( 0, start[index].x, start[index].y, 0 );
+
+    var neighbours = getNextStepForMaze1( 0, start[index].x, start[index].y, 0 );
     if( neighbours.length ) {
         stacks[index].push( start[index] );
         start[index] = neighbours[0];
@@ -151,7 +151,7 @@ function solveMaze1(index) {
         mazes[index][start[index].x][start[index].y] = 4;
         start[index] = stacks[index].pop();
     }
- 
+
     drawMaze(index);
     requestAnimationFrame( function() {
         solveMaze1(index);
@@ -171,7 +171,8 @@ function solveMaze1Optimized(index) {
         drawMaze(index);
         return;
     }
-    var neighbours = getOptimizedNextStopForMaze1( 1, start[index].x, start[index].y, 0 );
+
+    var neighbours = getOptimizedNextStepForMaze1( 1, start[index].x, start[index].y, 0 );
     if( neighbours.length ) {
         stacks[index].push( start[index] );
         start[index] = neighbours[0];
@@ -199,7 +200,7 @@ function solveMaze2(index) {
         drawMaze(index);
         return;
     }
-    var neighbours = getNextStopForMaze2( 0, start[index].x, start[index].y, 0 );
+    var neighbours = getNextStepForMaze2( 0, start[index].x, start[index].y, 0 );
     if( neighbours.length ) {
         stacks[index].push( start[index] );
         start[index] = neighbours[0];
@@ -228,7 +229,7 @@ function solveMaze2Optimized(index) {
         drawMaze(index);
         retu2n;
     }
-    var neighbours = getOptimizedNextStopForMaze2( 1, start[index].x, start[index].y, 0 );
+    var neighbours = getOptimizedNextStepForMaze2( 1, start[index].x, start[index].y, 0 );
     if( neighbours.length ) {
         stacks[index].push( start[index] );
         start[index] = neighbours[0];
