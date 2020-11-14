@@ -87,7 +87,7 @@ function getNextStepForMaze2( index, sx, sy, a ) {
     for (let i = 0; i < octSteps.length; i++) {
         const step = octSteps[i];
         
-        if(sx + step.dx > 0 && sx + step.dx < cols - 1 && sy + step.dy > 0 && sy + step.dy < rows - 1 &&
+        if(sx + step.dx > -1 && sx + step.dx < cols && sy + step.dy > -1 && sy + step.dy < rows &&
             mazes[index][sx + step.dx][sy + step.dy] % 8 == a){
             n.push({x: sx + step.dx, y: sy + step.dy});
 
