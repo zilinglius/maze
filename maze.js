@@ -1,72 +1,152 @@
-var ctxs, wid, hei, cols, rows, mazes, stacks = [];
-var quadSteps=[{dx: 0, dy: -1}, {dx: 1, dy: 0}, {dx: 0, dy: 1}, {dx: -1, dy: 0}];
-var octSteps=[{dx: -1, dy: -1}, {dx: 0, dy: -1}, {dx: 1, dy: -1}, {dx: 1, dy: 0}, {dx: 1, dy: 1}, {dx: 0, dy: 1}, {dx: -1, dy: 1}, {dx: -1, dy: 0}];
-var start = [{x:-1, y:-1}, {x:-1, y:-1}], end = [{x:-1, y:-1}, {x:-1, y:-1}],grid = 8;
-var padding = 16, s, density=0.5, count=2;
+var ctxs, wid, hei, cols, rows, mazes, stacks = [];//cols and rows 来自外面
+var distance1, ditance2;
+var quadSteps = [{ dx: 0, dy: -1 }, { dx: 1, dy: 0 }, { dx: 0, dy: 1 }, { dx: -1, dy: 0 }];// 4 dirs
+var octSteps = [{ dx: -1, dy: -1 },
+{ dx: 0, dy: -1 }, { dx: 1, dy: -1 }, { dx: 1, dy: 0 }, { dx: 1, dy: 1 },
+{ dx: 0, dy: 1 }, { dx: -1, dy: 1 }, { dx: -1, dy: 0 }];//8 dirs
+var start = [{ x: -1, y: -1 }, { x: -1, y: -1 }], end = [{ x: -1, y: -1 }, { x: -1, y: -1 }], grid = 8;
+var padding = 16, s, density = 0.5, count = 2;
+var opt = { cnt: 0, length: [] }
 
-function drawMaze(index) {
-    for( var i = 0; i < cols; i++ ) {
-        for( var j = 0; j < rows; j++ ) {
-            switch( mazes[index][i][j] ) {
-                case 0: ctxs[index].fillStyle = "black"; break;
-                case 1: ctxs[index].fillStyle = "gray"; break;
-                case 2: ctxs[index].fillStyle = "red"; break;
-                case 3: ctxs[index].fillStyle = "yellow"; break;
-                case 4: ctxs[index].fillStyle = "#500000"; break;
-                case 8: ctxs[index].fillStyle = "blue"; break;
-                case 9: ctxs[index].fillStyle = "gold"; break;
+function drawMaze(index) {//draw the maze
+    for (var i = 0; i < cols; i++) {
+        for (var j = 0; j < rows; j++) {
+            switch (mazes[index][i][j]) {
+                case 0: ctxs[index].fillStyle = "black"; break;//填充模式：颜色。黑色：未访问 0
+                case 1: ctxs[index].fillStyle = "gray"; break;//grey 非路径 1
+                case 2: ctxs[index].fillStyle = "red"; break;//正红色 正在访问 2
+                case 3: ctxs[index].fillStyle = "yellow"; break;//黄色：正确路径
+                case 4: ctxs[index].fillStyle = "green"; break;//green:4,aborted path
+                case 8: ctxs[index].fillStyle = "blue"; break;//8 blue
+                case 9: ctxs[index].fillStyle = "gold"; break;//9 gold successful
             }
-            ctxs[index].fillRect( grid * i, grid * j, grid, grid  );
+            ctxs[index].fillRect(grid * i, grid * j, grid, grid);
         }
     }
 }
 
 function drawBlock(ctx, sx, sy, a) {
-    switch( a ) {
+    switch (a) {
         case 0: ctx.fillStyle = "black"; break;
         case 1: ctx.fillStyle = "gray"; break;
         case 2: ctx.fillStyle = "red"; break;
         case 3: ctx.fillStyle = "yellow"; break;
-        case 4: ctx.fillStyle = "#500000"; break;
+        case 4: ctx.fillStyle = "green"; break;
         case 8: ctx.fillStyle = "blue"; break;
         case 9: ctxs[index].fillStyle = "gold"; break;
     }
-    ctx.fillRect( grid * sx, grid * sy, grid, grid  );
+    ctx.fillRect(grid * sx, grid * sy, grid, grid);
 }
 
-function getNextStepForMaze1( index, sx, sy, a ) {
-    var n = [];
-
-    for (let i = 0; i < quadSteps.length; i++) {
-        const step = quadSteps[i];
-        
-        if(sx + step.dx > 0 && sx + step.dx < cols - 1 && sy + step.dy > 0 && sy + step.dy < rows - 1 &&
-            mazes[index][sx + step.dx][sy + step.dy] % 8 == a){
-            n.push({x: sx + step.dx, y: sy + step.dy});
-
-            break;
-        }
-    }
-    return n;
-}
-
-function getOptimizedNextStepForMaze1(index, sx, sy, a) {
+//my optimizer
+function getNextStepForMaze1(index, sx, sy, a) {//ASTAR寻路
 
     var n = [];
     var min = cols > rows ? cols : rows;
-    min =  2 * min * min;
+    min = 2 * min * min;// possible longest distance
 
     var pos = -1;
 
-    for (let i = 0; i < quadSteps.length; i ++) {
+    for (let i = 0; i < quadSteps.length; i++) {
         const step = quadSteps[i];
 
-        if(sx + step.dx > -1 && sx + step.dx < cols && sy + step.dy > -1 && sy + step.dy < rows &&
-            mazes[index][sx + step.dx][sy + step.dy] % 8 == a){
+        if (sx + step.dx > -1 && sx + step.dx < cols && sy + step.dy > -1 && sy + step.dy < rows &&
+            mazes[index][sx + step.dx][sy + step.dy] % 8 == a) {
 
-            distance = (end[index].x - sx - step.dx) * (end[index].x - sx - step.dx) + 
-                        (end[index].y - sy - step.dy) * (end[index].y - sy - step.dy);
-    
+            distance1 = (end[index].x - sx - step.dx) * (end[index].x - sx - step.dx) +
+                (end[index].y - sy - step.dy) * (end[index].y - sy - step.dy);
+
+            if (distance1 < min) {
+                pos = i;
+                min = distance1;
+            }
+        }
+    }
+
+    if (opt.cnt != 0 && opt.length[cnt - 1] <= min && pos > -1) {
+        ++opt.cnt;
+        opt.length.push(min);
+    }
+    else {
+        if (opt.cnt != 0 && opt.length[cnt - 1] > min && pos > -1) {
+            for (var i = 0; i < opt.cnt; ++i) opt.length.pop();
+            opt.cnt = 0;
+        }
+        else if (opt.cnt <= 0 && pos > -1) {
+            opt.cnt = 1;
+            opt.length.push(min);
+        }
+    }
+    if (pos > -1) {
+        n.push({ x: sx + quadSteps[pos].dx, y: sy + quadSteps[pos].dy });
+    }
+
+
+    return n;
+}
+
+function solveMaze1(index) {//非优化寻路 图一
+    if (start[index].x == end[index].x && start[index].y == end[index].y) {//画完改颜色
+        for (var i = 0; i < cols; i++) {
+            for (var j = 0; j < rows; j++) {
+                switch (mazes[index][i][j]) {
+                    case 2: mazes[index][i][j] = 3; break;//红改黄
+                }
+            }
+        }
+        drawMaze(index);
+        return;
+    }
+
+    var neighbours = getNextStepForMaze1(index, start[index].x, start[index].y, 0);
+    if (opt.cnt >= 10) {
+        for (var i = 0; i < opt.cnt; ++i) {
+            opt.length.pop();
+            mazes[index][start[index].x][start[index].y] = 4;
+            start[index] = stacks[index].pop();
+            drawMaze(index);
+        }
+        opt.cnt = 0;
+        requestAnimationFrame(function () {
+            solveMaze1(index);
+        });
+    }
+    else {
+        if (neighbours.length) {//队里面还有东西1
+            stacks[index].push(start[index]);
+            start[index] = neighbours[0];
+            mazes[index][start[index].x][start[index].y] = 2;
+        } else {
+            mazes[index][start[index].x][start[index].y] = 4;
+            start[index] = stacks[index].pop();
+        }
+
+
+        drawMaze(index);
+        requestAnimationFrame(function () {
+            solveMaze1(index);
+        });
+    }
+}
+
+
+function getOptimizedNextStepForMaze1(index, sx, sy, a) {//ASTAR寻路
+
+    var n = [];
+    var min = cols > rows ? cols : rows;
+    min = 2 * min * min;// possible longest distance
+
+    var pos = -1;
+
+    for (let i = 0; i < quadSteps.length; i++) {
+        const step = quadSteps[i];
+
+        if (sx + step.dx > -1 && sx + step.dx < cols && sy + step.dy > -1 && sy + step.dy < rows &&
+            mazes[index][sx + step.dx][sy + step.dy] % 8 == a) {
+
+            distance = (end[index].x - sx - step.dx) * (end[index].x - sx - step.dx) +
+                (end[index].y - sy - step.dy) * (end[index].y - sy - step.dy);//A STAR
+
             if (distance < min) {
                 pos = i;
                 min = distance;
@@ -75,21 +155,52 @@ function getOptimizedNextStepForMaze1(index, sx, sy, a) {
     }
 
     if (pos > -1) {
-        n.push({x: sx + quadSteps[pos].dx, y: sy + quadSteps[pos].dy});
+        n.push({ x: sx + quadSteps[pos].dx, y: sy + quadSteps[pos].dy });
     }
 
-    return n; 
+    return n;
 }
 
-function getNextStepForMaze2( index, sx, sy, a ) {
+
+function solveMaze1Optimized(index) {//ASTAR优化寻路画图优化
+
+    if (start[index].x == end[index].x && start[index].y == end[index].y) {
+        for (var i = 0; i < cols; i++) {
+            for (var j = 0; j < rows; j++) {
+                switch (mazes[index][i][j]) {
+                    case 2: mazes[index][i][j] = 3; break;
+                }
+            }
+        }
+        drawMaze(index);
+        return;
+    }
+
+    var neighbours = getOptimizedNextStepForMaze1(index, start[index].x, start[index].y, 0);
+    if (neighbours.length) {
+        stacks[index].push(start[index]);
+        start[index] = neighbours[0];
+        mazes[index][start[index].x][start[index].y] = 2;
+    } else {
+        mazes[index][start[index].x][start[index].y] = 4;
+        start[index] = stacks[index].pop();
+    }
+
+    drawMaze(index);
+    requestAnimationFrame(function () {
+        solveMaze1Optimized(index);//递归解
+    });
+}
+
+function getNextStepForMaze2(index, sx, sy, a) {//not optimized by astar
     var n = [];
 
     for (let i = 0; i < octSteps.length; i++) {
         const step = octSteps[i];
-        
-        if(sx + step.dx > 0 && sx + step.dx < cols - 1 && sy + step.dy > 0 && sy + step.dy < rows - 1 &&
-            mazes[index][sx + step.dx][sy + step.dy] % 8 == a){
-            n.push({x: sx + step.dx, y: sy + step.dy});
+
+        if (sx + step.dx > 0 && sx + step.dx < cols - 1 && sy + step.dy > 0 && sy + step.dy < rows - 1 &&
+            mazes[index][sx + step.dx][sy + step.dy] % 8 == a) {
+            n.push({ x: sx + step.dx, y: sy + step.dy });
 
             break;
         }
@@ -97,24 +208,54 @@ function getNextStepForMaze2( index, sx, sy, a ) {
     return n;
 }
 
-function getOptimizedNextStepForMaze2(index, sx, sy, a) {
+
+
+function solveMaze2(index) {//方法二画图
+    if (start[index].x == end[index].x && start[index].y == end[index].y) {
+        for (var i = 0; i < cols; i++) {
+            for (var j = 0; j < rows; j++) {
+                switch (mazes[index][i][j]) {
+                    case 2: mazes[index][i][j] = 3; break;
+                }
+            }
+        }
+        drawMaze(index);
+        return;
+    }
+    var neighbours = getNextStepForMaze2(0, start[index].x, start[index].y, 0);
+    if (neighbours.length) {
+        stacks[index].push(start[index]);
+        start[index] = neighbours[0];
+        mazes[index][start[index].x][start[index].y] = 2;
+    } else {
+        mazes[index][start[index].x][start[index].y] = 4;
+        start[index] = stacks[index].pop();
+    }
+
+    drawMaze(index);
+    requestAnimationFrame(function () {
+        solveMaze2(index);
+    });
+}
+
+function getOptimizedNextStepForMaze2(index, sx, sy, a) {// 2 optimize by:improving the num of dirs
 
     var n = [];
     var dx = end[index].x - sx;
-    var dy = end[index].y - sy;
+    var dy = end[index].y - sy;//abs distance of two points in 2 axis
     var min = cols > rows ? cols : rows;
     min = 2 * min * min;
     var pos = -1;
 
-    for (let i = 0; i < octSteps.length; i ++) {
+    for (let i = 0; i < octSteps.length; i++) {
         const step = octSteps[i];
 
-        if(sx + step.dx > -1 && sx + step.dx < cols && sy + step.dy > -1 && sy + step.dy < rows &&
-            mazes[index][sx + step.dx][sy + step.dy] % 8 == a){
+        if (sx + step.dx > -1 && sx + step.dx < cols && sy + step.dy > -1 && sy + step.dy < rows &&
+            mazes[index][sx + step.dx][sy + step.dy] % 8 == a) {
 
-            distance = (end[index].x - sx - step.dx) * (end[index].x - sx - step.dx) + 
-                        (end[index].y - sy - step.dy) * (end[index].y - sy - step.dy);
-    
+            distance = (end[index].x - sx - step.dx) * (end[index].x - sx - step.dx) +
+                (end[index].y - sy - step.dy) * (end[index].y - sy - step.dy);
+
             if (distance < min) {
                 pos = i;
                 min = distance;
@@ -123,17 +264,18 @@ function getOptimizedNextStepForMaze2(index, sx, sy, a) {
     }
 
     if (pos > -1) {
-        n.push({x: sx + octSteps[pos].dx, y: sy + octSteps[pos].dy});
+        n.push({ x: sx + octSteps[pos].dx, y: sy + octSteps[pos].dy });
     }
 
-    return n; 
+    return n;
 }
 
-function solveMaze1(index) {
-    if( start[index].x == end[index].x && start[index].y == end[index].y ) {
-        for( var i = 0; i < cols; i++ ) {
-            for( var j = 0; j < rows; j++ ) {
-                switch( mazes[index][i][j] ) {
+function solveMaze2Optimized(index) {//方法二画图优化
+
+    if (start[index].x == end[index].x && start[index].y == end[index].y) {
+        for (var i = 0; i < cols; i++) {
+            for (var j = 0; j < rows; j++) {
+                switch (mazes[index][i][j]) {
                     case 2: mazes[index][i][j] = 3; break;
                 }
             }
@@ -141,10 +283,9 @@ function solveMaze1(index) {
         drawMaze(index);
         return;
     }
-
-    var neighbours = getNextStepForMaze1( 0, start[index].x, start[index].y, 0 );
-    if( neighbours.length ) {
-        stacks[index].push( start[index] );
+    var neighbours = getOptimizedNextStepForMaze2(1, start[index].x, start[index].y, 0);
+    if (neighbours.length) {
+        stacks[index].push(start[index]);
         start[index] = neighbours[0];
         mazes[index][start[index].x][start[index].y] = 2;
     } else {
@@ -153,115 +294,29 @@ function solveMaze1(index) {
     }
 
     drawMaze(index);
-    requestAnimationFrame( function() {
-        solveMaze1(index);
-    } );
-}
-
-function solveMaze1Optimized(index) {
-
-    if( start[index].x == end[index].x && start[index].y == end[index].y ) {
-        for( var i = 0; i < cols; i++ ) {
-            for( var j = 0; j < rows; j++ ) {
-                switch( mazes[index][i][j] ) {
-                    case 2: mazes[index][i][j] = 3; break;
-                }
-            }
-        }
-        drawMaze(index);
-        return;
-    }
-
-    var neighbours = getOptimizedNextStepForMaze1( 1, start[index].x, start[index].y, 0 );
-    if( neighbours.length ) {
-        stacks[index].push( start[index] );
-        start[index] = neighbours[0];
-        mazes[index][start[index].x][start[index].y] = 2;
-    } else {
-        mazes[index][start[index].x][start[index].y] = 4;
-        start[index] = stacks[index].pop();
-    }
- 
-    drawMaze(index);
-    requestAnimationFrame( function() {
-        solveMaze1Optimized(index);
-    } );
-}
-
-function solveMaze2(index) {
-    if( start[index].x == end[index].x && start[index].y == end[index].y ) {
-        for( var i = 0; i < cols; i++ ) {
-            for( var j = 0; j < rows; j++ ) {
-                switch( mazes[index][i][j] ) {
-                    case 2: mazes[index][i][j] = 3; break;
-                }
-            }
-        }
-        drawMaze(index);
-        return;
-    }
-    var neighbours = getNextStepForMaze2( 0, start[index].x, start[index].y, 0 );
-    if( neighbours.length ) {
-        stacks[index].push( start[index] );
-        start[index] = neighbours[0];
-        mazes[index][start[index].x][start[index].y] = 2;
-    } else {
-        mazes[index][start[index].x][start[index].y] = 4;
-        start[index] = stacks[index].pop();
-    }
- 
-    drawMaze(index);
-    requestAnimationFrame( function() {
-        solveMaze2(index);
-    } );
-}
-
-function solveMaze2Optimized(index) {
-
-    if( start[index].x == end[index].x && start[index].y == end[index].y ) {
-        for( var i = 0; i < cols; i++ ) {
-            for( var j = 0; j < rows; j++ ) {
-                switch( mazes[index][i][j] ) {
-                    case 2: mazes[index][i][j] = 3; break;
-                }
-            }
-        }
-        drawMaze(index);
-        retu2n;
-    }
-    var neighbours = getOptimizedNextStepForMaze2( 1, start[index].x, start[index].y, 0 );
-    if( neighbours.length ) {
-        stacks[index].push( start[index] );
-        start[index] = neighbours[0];
-        mazes[index][start[index].x][start[index].y] = 2;
-    } else {
-        mazes[index][start[index].x][start[index].y] = 4;
-        start[index] = stacks[index].pop();
-    }
- 
-    drawMaze(index);
-    requestAnimationFrame( function() {
+    requestAnimationFrame(function () {
         solveMaze2Optimized(index);
-    } );
+    });
 }
-function getCursorPos( event ) {
+
+function getCursorPos(event) {
     var rect = this.getBoundingClientRect();
-    var x = Math.floor( ( event.clientX - rect.left ) / grid / s), 
-        y = Math.floor( ( event.clientY - rect.top  ) / grid / s);
-    
-    if(end[0].x != -1) {
+    var x = Math.floor((event.clientX - rect.left) / grid / s),
+        y = Math.floor((event.clientY - rect.top) / grid / s);
+
+    if (end[0].x != -1) {
         onClear();
     }
 
-    if( mazes[0][x][y] ) return;
-    if( start[0].x == -1 ) {
+    if (mazes[0][x][y]) return;
+    if (start[0].x == -1) {
         start[0] = { x: x, y: y };
         start[1] = { x: x, y: y };
         mazes[0][start[0].x][start[0].y] = 9;
         mazes[1][start[1].x][start[1].y] = 9;
-        
-        for(var i = 0; i < count; i++) {
-            drawMaze(i); 
+
+        for (var i = 0; i < count; i++) {
+            drawMaze(i);
         }
     } else {
         end[0] = { x: x, y: y };
@@ -269,9 +324,9 @@ function getCursorPos( event ) {
         mazes[0][end[0].x][end[0].y] = 8;
         mazes[1][end[1].x][end[1].y] = 8;
 
-        if(document.getElementById("sltType").value == "Maze1") {
+        if (document.getElementById("sltType").value == "Maze1") {
             solveMaze1(0);
-            solveMaze1Optimized(1);    
+            solveMaze1Optimized(1);
         } else {
 
             solveMaze2(0);
@@ -280,30 +335,31 @@ function getCursorPos( event ) {
     }
 }
 
-function getNeighbours( index, sx, sy, a ) {
+//下面是画出来迷宫的代码，暂时不关心
+function getNeighbours(index, sx, sy, a) {
     var n = [];
-    if( sx - 1 > 0 && mazes[index][sx - 1][sy] == a && sx - 2 > 0 && mazes[index][sx - 2][sy] == a ) {
-        n.push( { x:sx - 1, y:sy } ); n.push( { x:sx - 2, y:sy } );
+    if (sx - 1 > 0 && mazes[index][sx - 1][sy] == a && sx - 2 > 0 && mazes[index][sx - 2][sy] == a) {
+        n.push({ x: sx - 1, y: sy }); n.push({ x: sx - 2, y: sy });
     }
-    if( sx + 1 < cols - 1 && mazes[index][sx + 1][sy] == a && sx + 2 < cols - 1 && mazes[index][sx + 2][sy] == a ) {
-        n.push( { x:sx + 1, y:sy } ); n.push( { x:sx + 2, y:sy } );
+    if (sx + 1 < cols - 1 && mazes[index][sx + 1][sy] == a && sx + 2 < cols - 1 && mazes[index][sx + 2][sy] == a) {
+        n.push({ x: sx + 1, y: sy }); n.push({ x: sx + 2, y: sy });
     }
-    if( sy - 1 > 0 && mazes[index][sx][sy - 1] == a && sy - 2 > 0 && mazes[index][sx][sy - 2] == a ) {
-        n.push( { x:sx, y:sy - 1 } ); n.push( { x:sx, y:sy - 2 } );
+    if (sy - 1 > 0 && mazes[index][sx][sy - 1] == a && sy - 2 > 0 && mazes[index][sx][sy - 2] == a) {
+        n.push({ x: sx, y: sy - 1 }); n.push({ x: sx, y: sy - 2 });
     }
-    if( sy + 1 < rows - 1 && mazes[index][sx][sy + 1] == a && sy + 2 < rows - 1 && mazes[index][sx][sy + 2] == a ) {
-        n.push( { x:sx, y:sy + 1 } ); n.push( { x:sx, y:sy + 2 } );
+    if (sy + 1 < rows - 1 && mazes[index][sx][sy + 1] == a && sy + 2 < rows - 1 && mazes[index][sx][sy + 2] == a) {
+        n.push({ x: sx, y: sy + 1 }); n.push({ x: sx, y: sy + 2 });
     }
     return n;
 }
 
-function createArray( c, r ) {
-    var m = new Array( count );
-    for( var i = 0; i < count; i++ ) {
-        m[i] = new Array( c );
-        for( var j = 0; j < c; j++ ) {
+function createArray(c, r) {
+    var m = new Array(count);
+    for (var i = 0; i < count; i++) {
+        m[i] = new Array(c);
+        for (var j = 0; j < c; j++) {
             m[i][j] = new Array(r);
-            for(var k = 0; k < r; k++) {
+            for (var k = 0; k < r; k++) {
                 m[i][j][k] = 1;
             }
         }
@@ -312,87 +368,87 @@ function createArray( c, r ) {
 }
 
 function createMaze1() {
-    var neighbours = getNeighbours( 0, start[0].x, start[0].y, 1 ), l;
-    if( neighbours.length < 1 ) {
-        if( stacks[0].length < 1 ) {
+    var neighbours = getNeighbours(0, start[0].x, start[0].y, 1), l;
+    if (neighbours.length < 1) {
+        if (stacks[0].length < 1) {
 
-            for(var i = 0; i < count; i++) {
-                drawMaze(i); 
+            for (var i = 0; i < count; i++) {
+                drawMaze(i);
             }
 
             stacks = new Array(count);
             stacks[0] = []
             stacks[1] = [];
-            
+
             start[0].x = start[0].y = -1;
-            document.getElementById( "canvas1" ).addEventListener( "mousedown", getCursorPos, false );
+            document.getElementById("canvas1").addEventListener("mousedown", getCursorPos, false);
             document.getElementById("btnCreateMaze").removeAttribute("disabled");
 
             return;
         }
         start[0] = stacks[0].pop();
     } else {
-        var i = 2 * Math.floor( Math.random() * ( neighbours.length / 2 ) )
-        l = neighbours[i]; 
+        var i = 2 * Math.floor(Math.random() * (neighbours.length / 2))
+        l = neighbours[i];
         mazes[0][l.x][l.y] = 0;
         mazes[1][l.x][l.y] = 0;
 
-        l = neighbours[i + 1]; 
+        l = neighbours[i + 1];
         mazes[0][l.x][l.y] = 0;
         mazes[1][l.x][l.y] = 0;
 
         start[0] = l
 
-        stacks[0].push( start[0] )
+        stacks[0].push(start[0])
     }
-    for(var i = 0; i < count; i++) {
-        drawMaze(i); 
+    for (var i = 0; i < count; i++) {
+        drawMaze(i);
     }
-    
-    requestAnimationFrame( createMaze1 );
+
+    requestAnimationFrame(createMaze1);
 }
 
 function createMaze1NonAni(ctx) {
 
-    while(true) {
+    while (true) {
 
-        var neighbours = getNeighbours( 0, start[0].x, start[0].y, 1 ), l;
-        if( neighbours.length < 1 ) {
-            if( stacks[0].length < 1 ) {
-                for(var i = 0; i < count; i++) {
-                    drawMaze(i); 
-                    drawMaze(i);    
+        var neighbours = getNeighbours(0, start[0].x, start[0].y, 1), l;
+        if (neighbours.length < 1) {
+            if (stacks[0].length < 1) {
+                for (var i = 0; i < count; i++) {
+                    drawMaze(i);
+                    drawMaze(i);
                 }
-    
-                for(var i = 0; i < count; i++) {
-                    drawMaze(i); 
-                    drawMaze(i);    
+
+                for (var i = 0; i < count; i++) {
+                    drawMaze(i);
+                    drawMaze(i);
                 }
-    
+
                 stacks = new Array(count);
                 stacks[0] = []
                 stacks[1] = [];
-                
+
                 start[0].x = start[0].y = -1;
-                document.getElementById( "canvas1" ).addEventListener( "mousedown", getCursorPos, false );
+                document.getElementById("canvas1").addEventListener("mousedown", getCursorPos, false);
                 document.getElementById("btnCreateMaze").removeAttribute("disabled");
-    
+
                 return;
             }
             start[0] = stacks[0].pop();
         } else {
-            var i = 2 * Math.floor( Math.random() * ( neighbours.length / 2 ) )
-            l = neighbours[i]; 
-            mazes[0][l.x][l.y] = 0;    
-            mazes[1][l.x][l.y] = 0;
-
-            l = neighbours[i + 1]; 
+            var i = 2 * Math.floor(Math.random() * (neighbours.length / 2))
+            l = neighbours[i];
             mazes[0][l.x][l.y] = 0;
             mazes[1][l.x][l.y] = 0;
-    
+
+            l = neighbours[i + 1];
+            mazes[0][l.x][l.y] = 0;
+            mazes[1][l.x][l.y] = 0;
+
             start[0] = l
-            stacks[0].push( start[0] )
-        }    
+            stacks[0].push(start[0])
+        }
     }
     document.getElementById("btnCreateMaze").removeAttribute("disabled");
 }
@@ -403,21 +459,21 @@ function createMaze2(ctx) {
 
     mazes[0][start[0].x][start[0].y] = r < density ? 0 : 1;
     mazes[1][start[0].x][start[0].y] = r < density ? 0 : 1;
-    
+
     drawMaze(0);
     drawMaze(1);
 
-    if(start[0].x == (cols - 1) && start[0].y == (rows - 1)){
+    if (start[0].x == (cols - 1) && start[0].y == (rows - 1)) {
 
         start[0].x = start[0].y = -1;
-        document.getElementById( "canvas1" ).addEventListener( "mousedown", getCursorPos, false );
+        document.getElementById("canvas1").addEventListener("mousedown", getCursorPos, false);
         document.getElementById("btnCreateMaze").removeAttribute("disabled");
 
         return;
     }
 
     start[0].x = start[0].x + 1;
-    if(start[0].x == cols){
+    if (start[0].x == cols) {
         start[0].x = 0;
         start[0].y = start[0].y + 1;
     }
@@ -427,11 +483,11 @@ function createMaze2(ctx) {
 
 function createMaze2NonAni() {
 
-    for(var i = 0; i < cols; i++){
-        for(var j = 0; j < rows; j++){
+    for (var i = 0; i < cols; i++) {
+        for (var j = 0; j < rows; j++) {
             flag = Math.random();
-            mazes[0][i][j] = flag < density ? 0 : 1;    
-            mazes[1][i][j] = flag < density ? 0 : 1;    
+            mazes[0][i][j] = flag < density ? 0 : 1;
+            mazes[1][i][j] = flag < density ? 0 : 1;
         }
     }
 
@@ -440,7 +496,7 @@ function createMaze2NonAni() {
 
     start[0].x = start[0].y = -1;
 
-    document.getElementById( "canvas1" ).addEventListener( "mousedown", getCursorPos, false );
+    document.getElementById("canvas1").addEventListener("mousedown", getCursorPos, false);
     document.getElementById("btnCreateMaze").removeAttribute("disabled");
 }
 
@@ -449,21 +505,21 @@ function createCanvas(count) {
     ctxs = new Array(count);
     mazes = new Array(count);
 
-    for(var i = 0; i < count; i++) {
-        var canvas = document.createElement( "canvas" );
-        wid = document.getElementById("maze" + (i + 1)).offsetWidth - padding; 
+    for (var i = 0; i < count; i++) {
+        var canvas = document.createElement("canvas");
+        wid = document.getElementById("maze" + (i + 1)).offsetWidth - padding;
         hei = 400;
-        
+
         canvas.width = wid; canvas.height = 400;
         canvas.id = "canvas" + (i + 1);
-        ctxs[i] = canvas.getContext( "2d" );
-        ctxs[i].fillStyle = "gray"; 
+        ctxs[i] = canvas.getContext("2d");
+        ctxs[i].fillStyle = "gray";
         var div = document.getElementById("maze" + (i + 1))
-        div.appendChild( canvas );    
+        div.appendChild(canvas);
     }
-    
-    for(var i = 0; i < count; i++) {
-        ctxs[i].fillRect( 0, 0, wid, hei );
+
+    for (var i = 0; i < count; i++) {
+        ctxs[i].fillRect(0, 0, wid, hei);
     }
 }
 
@@ -479,22 +535,22 @@ function onCreate() {
 
     document.getElementById("btnCreateMaze").setAttribute("disabled", "disabled");
 
-    wid = document.getElementById("maze1").offsetWidth - padding; 
+    wid = document.getElementById("maze1").offsetWidth - padding;
     hei = 400;
 
-    cols = eval(document.getElementById("cols").value); 
+    cols = eval(document.getElementById("cols").value);
     rows = eval(document.getElementById("rows").value);
 
     var mazeType = document.getElementById("sltType").value;
 
-    if(mazeType == "Maze1") {
+    if (mazeType == "Maze1") {
         cols = cols + 1 - cols % 2;
-        rows = rows + 1 - rows % 2;    
+        rows = rows + 1 - rows % 2;
     }
 
-    mazes = createArray( cols, rows );
+    mazes = createArray(cols, rows);
 
-    for(var i = 0; i < count; i++) {
+    for (var i = 0; i < count; i++) {
 
         var canvas = document.getElementById("canvas" + (i + 1));
         canvas.width = wid;
@@ -504,18 +560,18 @@ function onCreate() {
         ctxs[i].scale(s, s);
     }
 
-    if(mazeType == "Maze1") {
+    if (mazeType == "Maze1") {
 
-        start[0].x = Math.floor( Math.random() * ( cols / 2 ) );
-        start[0].y = Math.floor( Math.random() * ( rows / 2 ) );
-        if( !( start[0].x & 1 ) ) start[0].x++; if( !( start[0].y & 1 ) ) start[0].y++;
-        
-        for(var i = 0; i < count; i++) {
+        start[0].x = Math.floor(Math.random() * (cols / 2));
+        start[0].y = Math.floor(Math.random() * (rows / 2));
+        if (!(start[0].x & 1)) start[0].x++; if (!(start[0].y & 1)) start[0].y++;
+
+        for (var i = 0; i < count; i++) {
 
             mazes[i][start[0].x][start[0].y] = 0;
         }
 
-        if(document.getElementById("chkAnimated").checked) {
+        if (document.getElementById("chkAnimated").checked) {
 
             createMaze1();
         }
@@ -530,7 +586,7 @@ function onCreate() {
         start[0].x = 0;
         start[0].x = 0;
 
-        if(document.getElementById("chkAnimated").checked) {
+        if (document.getElementById("chkAnimated").checked) {
 
             createMaze2();
         }
@@ -542,7 +598,7 @@ function onCreate() {
 }
 
 function onSltType() {
-    if(document.getElementById("sltType").value == "Maze2") {
+    if (document.getElementById("sltType").value == "Maze2") {
         document.getElementById("density").removeAttribute("disabled");
     }
     else {
@@ -551,22 +607,22 @@ function onSltType() {
 }
 
 function onClear() {
-    
-    for(var i = 0; i < count; i++){
-        for(var j = 0; j < cols; j++){
-            for( var k = 0; k < rows; k++) {
-                if(mazes[i][j][k] == 3 || mazes[i][j][k] == 4 || mazes[i][j][k] == 8 || mazes[i][j][k] == 9) {
+
+    for (var i = 0; i < count; i++) {
+        for (var j = 0; j < cols; j++) {
+            for (var k = 0; k < rows; k++) {
+                if (mazes[i][j][k] == 3 || mazes[i][j][k] == 4 || mazes[i][j][k] == 8 || mazes[i][j][k] == 9) {
                     mazes[i][j][k] = 0;
-                }    
+                }
             }
         }
     }
 
-    for(var i = 0; i < count; i++) {
-        drawMaze(i); 
+    for (var i = 0; i < count; i++) {
+        drawMaze(i);
     }
-    for(var i = 0; i < count; i++) {
-        drawMaze(i); 
+    for (var i = 0; i < count; i++) {
+        drawMaze(i);
     }
 
     stacks = new Array(count);
