@@ -1,36 +1,68 @@
 var ctxs, wid, hei, cols, rows, mazes, stacks = [];
-var quadSteps=[{dx: 0, dy: -1}, {dx: 1, dy: 0}, {dx: 0, dy: 1}, {dx: -1, dy: 0}];
-var octSteps=[{dx: -1, dy: -1}, {dx: 0, dy: -1}, {dx: 1, dy: -1}, {dx: 1, dy: 0}, {dx: 1, dy: 1}, {dx: 0, dy: 1}, {dx: -1, dy: 1}, {dx: -1, dy: 0}];
-var start = [{x:-1, y:-1}, {x:-1, y:-1}], end = [{x:-1, y:-1}, {x:-1, y:-1}],grid = 8;
-var padding = 16, s, density=0.5, count=2;
+const quadSteps=[{dx: 0, dy: -1}, {dx: 1, dy: 0}, {dx: 0, dy: 1}, {dx: -1, dy: 0}];
+const octSteps=[{dx: -1, dy: -1}, {dx: 0, dy: -1}, {dx: 1, dy: -1}, {dx: 1, dy: 0}, {dx: 1, dy: 1}, {dx: 0, dy: 1}, {dx: -1, dy: 1}, {dx: -1, dy: 0}];
+var start = [{x:-1, y:-1}, {x:-1, y:-1}], end = [{x:-1, y:-1}, {x:-1, y:-1}];
+const grid = 8, padding = 16, count = 2;
+var s, density = 0.5;
+
+// Constants for cell types
+const CELL_TYPES = {
+    WALL: 0,
+    PATH: 1,
+    CURRENT: 2,
+    SOLUTION: 3,
+    VISITED: 4,
+    TARGET: 8,
+    START: 9
+};
+
+// Color mapping for different cell types
+function getCellColor(cellType) {
+    switch(cellType) {
+        case CELL_TYPES.WALL: return "black";
+        case CELL_TYPES.PATH: return "gray";
+        case CELL_TYPES.CURRENT: return "red";
+        case CELL_TYPES.SOLUTION: return "yellow";
+        case CELL_TYPES.VISITED: return "#500000";
+        case CELL_TYPES.TARGET: return "blue";
+        case CELL_TYPES.START: return "gold";
+        default: return "gray";
+    }
+}
+
+// Calculate Euclidean distance between two points
+function calculateDistance(x1, y1, x2, y2) {
+    return (x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1);
+}
+
+// Check if position is within maze bounds
+function isValidPosition(x, y) {
+    return x >= 0 && x < cols && y >= 0 && y < rows;
+}
+
+// Handle maze completion - converts path cells to solution cells
+function handleMazeCompletion(index) {
+    for( var i = 0; i < cols; i++ ) {
+        for( var j = 0; j < rows; j++ ) {
+            if( mazes[index][i][j] === CELL_TYPES.CURRENT ) {
+                mazes[index][i][j] = CELL_TYPES.SOLUTION;
+            }
+        }
+    }
+    drawMaze(index);
+}
 
 function drawMaze(index) {
     for( var i = 0; i < cols; i++ ) {
         for( var j = 0; j < rows; j++ ) {
-            switch( mazes[index][i][j] ) {
-                case 0: ctxs[index].fillStyle = "black"; break;
-                case 1: ctxs[index].fillStyle = "gray"; break;
-                case 2: ctxs[index].fillStyle = "red"; break;
-                case 3: ctxs[index].fillStyle = "yellow"; break;
-                case 4: ctxs[index].fillStyle = "#500000"; break;
-                case 8: ctxs[index].fillStyle = "blue"; break;
-                case 9: ctxs[index].fillStyle = "gold"; break;
-            }
+            ctxs[index].fillStyle = getCellColor(mazes[index][i][j]);
             ctxs[index].fillRect( grid * i, grid * j, grid, grid  );
         }
     }
 }
 
 function drawBlock(ctx, sx, sy, a) {
-    switch( a ) {
-        case 0: ctx.fillStyle = "black"; break;
-        case 1: ctx.fillStyle = "gray"; break;
-        case 2: ctx.fillStyle = "red"; break;
-        case 3: ctx.fillStyle = "yellow"; break;
-        case 4: ctx.fillStyle = "#500000"; break;
-        case 8: ctx.fillStyle = "blue"; break;
-        case 9: ctxs[index].fillStyle = "gold"; break;
-    }
+    ctx.fillStyle = getCellColor(a);
     ctx.fillRect( grid * sx, grid * sy, grid, grid  );
 }
 
@@ -51,21 +83,18 @@ function getNextStepForMaze1( index, sx, sy, a ) {
 }
 
 function getOptimizedNextStepForMaze1(index, sx, sy, a) {
-
     var n = [];
     var min = cols > rows ? cols : rows;
     min =  2 * min * min;
-
     var pos = -1;
 
     for (let i = 0; i < quadSteps.length; i ++) {
         const step = quadSteps[i];
+        const newX = sx + step.dx;
+        const newY = sy + step.dy;
 
-        if(sx + step.dx > -1 && sx + step.dx < cols && sy + step.dy > -1 && sy + step.dy < rows &&
-            mazes[index][sx + step.dx][sy + step.dy] % 8 == a){
-
-            distance = (end[index].x - sx - step.dx) * (end[index].x - sx - step.dx) + 
-                        (end[index].y - sy - step.dy) * (end[index].y - sy - step.dy);
+        if(isValidPosition(newX, newY) && mazes[index][newX][newY] % 8 == a){
+            var distance = calculateDistance(newX, newY, end[index].x, end[index].y);
     
             if (distance < min) {
                 pos = i;
@@ -98,22 +127,18 @@ function getNextStepForMaze2( index, sx, sy, a ) {
 }
 
 function getOptimizedNextStepForMaze2(index, sx, sy, a) {
-
     var n = [];
-    var dx = end[index].x - sx;
-    var dy = end[index].y - sy;
     var min = cols > rows ? cols : rows;
     min = 2 * min * min;
     var pos = -1;
 
     for (let i = 0; i < octSteps.length; i ++) {
         const step = octSteps[i];
+        const newX = sx + step.dx;
+        const newY = sy + step.dy;
 
-        if(sx + step.dx > -1 && sx + step.dx < cols && sy + step.dy > -1 && sy + step.dy < rows &&
-            mazes[index][sx + step.dx][sy + step.dy] % 8 == a){
-
-            distance = (end[index].x - sx - step.dx) * (end[index].x - sx - step.dx) + 
-                        (end[index].y - sy - step.dy) * (end[index].y - sy - step.dy);
+        if(isValidPosition(newX, newY) && mazes[index][newX][newY] % 8 == a){
+            var distance = calculateDistance(newX, newY, end[index].x, end[index].y);
     
             if (distance < min) {
                 pos = i;
@@ -131,24 +156,17 @@ function getOptimizedNextStepForMaze2(index, sx, sy, a) {
 
 function solveMaze1(index) {
     if( start[index].x == end[index].x && start[index].y == end[index].y ) {
-        for( var i = 0; i < cols; i++ ) {
-            for( var j = 0; j < rows; j++ ) {
-                switch( mazes[index][i][j] ) {
-                    case 2: mazes[index][i][j] = 3; break;
-                }
-            }
-        }
-        drawMaze(index);
+        handleMazeCompletion(index);
         return;
     }
 
-    var neighbours = getNextStepForMaze1( 0, start[index].x, start[index].y, 0 );
+    var neighbours = getNextStepForMaze1( 0, start[index].x, start[index].y, CELL_TYPES.WALL );
     if( neighbours.length ) {
         stacks[index].push( start[index] );
         start[index] = neighbours[0];
-        mazes[index][start[index].x][start[index].y] = 2;
+        mazes[index][start[index].x][start[index].y] = CELL_TYPES.CURRENT;
     } else {
-        mazes[index][start[index].x][start[index].y] = 4;
+        mazes[index][start[index].x][start[index].y] = CELL_TYPES.VISITED;
         start[index] = stacks[index].pop();
     }
 
@@ -159,26 +177,18 @@ function solveMaze1(index) {
 }
 
 function solveMaze1Optimized(index) {
-
     if( start[index].x == end[index].x && start[index].y == end[index].y ) {
-        for( var i = 0; i < cols; i++ ) {
-            for( var j = 0; j < rows; j++ ) {
-                switch( mazes[index][i][j] ) {
-                    case 2: mazes[index][i][j] = 3; break;
-                }
-            }
-        }
-        drawMaze(index);
+        handleMazeCompletion(index);
         return;
     }
 
-    var neighbours = getOptimizedNextStepForMaze1( 1, start[index].x, start[index].y, 0 );
+    var neighbours = getOptimizedNextStepForMaze1( 1, start[index].x, start[index].y, CELL_TYPES.WALL );
     if( neighbours.length ) {
         stacks[index].push( start[index] );
         start[index] = neighbours[0];
-        mazes[index][start[index].x][start[index].y] = 2;
+        mazes[index][start[index].x][start[index].y] = CELL_TYPES.CURRENT;
     } else {
-        mazes[index][start[index].x][start[index].y] = 4;
+        mazes[index][start[index].x][start[index].y] = CELL_TYPES.VISITED;
         start[index] = stacks[index].pop();
     }
  
@@ -190,23 +200,16 @@ function solveMaze1Optimized(index) {
 
 function solveMaze2(index) {
     if( start[index].x == end[index].x && start[index].y == end[index].y ) {
-        for( var i = 0; i < cols; i++ ) {
-            for( var j = 0; j < rows; j++ ) {
-                switch( mazes[index][i][j] ) {
-                    case 2: mazes[index][i][j] = 3; break;
-                }
-            }
-        }
-        drawMaze(index);
+        handleMazeCompletion(index);
         return;
     }
-    var neighbours = getNextStepForMaze2( 0, start[index].x, start[index].y, 0 );
+    var neighbours = getNextStepForMaze2( 0, start[index].x, start[index].y, CELL_TYPES.WALL );
     if( neighbours.length ) {
         stacks[index].push( start[index] );
         start[index] = neighbours[0];
-        mazes[index][start[index].x][start[index].y] = 2;
+        mazes[index][start[index].x][start[index].y] = CELL_TYPES.CURRENT;
     } else {
-        mazes[index][start[index].x][start[index].y] = 4;
+        mazes[index][start[index].x][start[index].y] = CELL_TYPES.VISITED;
         start[index] = stacks[index].pop();
     }
  
@@ -217,25 +220,17 @@ function solveMaze2(index) {
 }
 
 function solveMaze2Optimized(index) {
-
     if( start[index].x == end[index].x && start[index].y == end[index].y ) {
-        for( var i = 0; i < cols; i++ ) {
-            for( var j = 0; j < rows; j++ ) {
-                switch( mazes[index][i][j] ) {
-                    case 2: mazes[index][i][j] = 3; break;
-                }
-            }
-        }
-        drawMaze(index);
-        retu2n;
+        handleMazeCompletion(index);
+        return;
     }
-    var neighbours = getOptimizedNextStepForMaze2( 1, start[index].x, start[index].y, 0 );
+    var neighbours = getOptimizedNextStepForMaze2( 1, start[index].x, start[index].y, CELL_TYPES.WALL );
     if( neighbours.length ) {
         stacks[index].push( start[index] );
         start[index] = neighbours[0];
-        mazes[index][start[index].x][start[index].y] = 2;
+        mazes[index][start[index].x][start[index].y] = CELL_TYPES.CURRENT;
     } else {
-        mazes[index][start[index].x][start[index].y] = 4;
+        mazes[index][start[index].x][start[index].y] = CELL_TYPES.VISITED;
         start[index] = stacks[index].pop();
     }
  
@@ -257,8 +252,8 @@ function getCursorPos( event ) {
     if( start[0].x == -1 ) {
         start[0] = { x: x, y: y };
         start[1] = { x: x, y: y };
-        mazes[0][start[0].x][start[0].y] = 9;
-        mazes[1][start[1].x][start[1].y] = 9;
+        mazes[0][start[0].x][start[0].y] = CELL_TYPES.START;
+        mazes[1][start[1].x][start[1].y] = CELL_TYPES.START;
         
         for(var i = 0; i < count; i++) {
             drawMaze(i); 
@@ -266,8 +261,8 @@ function getCursorPos( event ) {
     } else {
         end[0] = { x: x, y: y };
         end[1] = { x: x, y: y };
-        mazes[0][end[0].x][end[0].y] = 8;
-        mazes[1][end[1].x][end[1].y] = 8;
+        mazes[0][end[0].x][end[0].y] = CELL_TYPES.TARGET;
+        mazes[1][end[1].x][end[1].y] = CELL_TYPES.TARGET;
 
         if(document.getElementById("sltType").value == "Maze1") {
             solveMaze1(0);
@@ -334,12 +329,12 @@ function createMaze1() {
     } else {
         var i = 2 * Math.floor( Math.random() * ( neighbours.length / 2 ) )
         l = neighbours[i]; 
-        mazes[0][l.x][l.y] = 0;
-        mazes[1][l.x][l.y] = 0;
+        mazes[0][l.x][l.y] = CELL_TYPES.WALL;
+        mazes[1][l.x][l.y] = CELL_TYPES.WALL;
 
         l = neighbours[i + 1]; 
-        mazes[0][l.x][l.y] = 0;
-        mazes[1][l.x][l.y] = 0;
+        mazes[0][l.x][l.y] = CELL_TYPES.WALL;
+        mazes[1][l.x][l.y] = CELL_TYPES.WALL;
 
         start[0] = l
 
@@ -361,12 +356,6 @@ function createMaze1NonAni(ctx) {
             if( stacks[0].length < 1 ) {
                 for(var i = 0; i < count; i++) {
                     drawMaze(i); 
-                    drawMaze(i);    
-                }
-    
-                for(var i = 0; i < count; i++) {
-                    drawMaze(i); 
-                    drawMaze(i);    
                 }
     
                 stacks = new Array(count);
@@ -383,12 +372,12 @@ function createMaze1NonAni(ctx) {
         } else {
             var i = 2 * Math.floor( Math.random() * ( neighbours.length / 2 ) )
             l = neighbours[i]; 
-            mazes[0][l.x][l.y] = 0;    
-            mazes[1][l.x][l.y] = 0;
+            mazes[0][l.x][l.y] = CELL_TYPES.WALL;    
+            mazes[1][l.x][l.y] = CELL_TYPES.WALL;
 
             l = neighbours[i + 1]; 
-            mazes[0][l.x][l.y] = 0;
-            mazes[1][l.x][l.y] = 0;
+            mazes[0][l.x][l.y] = CELL_TYPES.WALL;
+            mazes[1][l.x][l.y] = CELL_TYPES.WALL;
     
             start[0] = l
             stacks[0].push( start[0] )
@@ -401,8 +390,8 @@ function createMaze2(ctx) {
 
     var r = Math.random();
 
-    mazes[0][start[0].x][start[0].y] = r < density ? 0 : 1;
-    mazes[1][start[0].x][start[0].y] = r < density ? 0 : 1;
+    mazes[0][start[0].x][start[0].y] = r < density ? CELL_TYPES.WALL : CELL_TYPES.PATH;
+    mazes[1][start[0].x][start[0].y] = r < density ? CELL_TYPES.WALL : CELL_TYPES.PATH;
     
     drawMaze(0);
     drawMaze(1);
@@ -429,9 +418,9 @@ function createMaze2NonAni() {
 
     for(var i = 0; i < cols; i++){
         for(var j = 0; j < rows; j++){
-            flag = Math.random();
-            mazes[0][i][j] = flag < density ? 0 : 1;    
-            mazes[1][i][j] = flag < density ? 0 : 1;    
+            var flag = Math.random();
+            mazes[0][i][j] = flag < density ? CELL_TYPES.WALL : CELL_TYPES.PATH;    
+            mazes[1][i][j] = flag < density ? CELL_TYPES.WALL : CELL_TYPES.PATH;    
         }
     }
 
@@ -482,8 +471,8 @@ function onCreate() {
     wid = document.getElementById("maze1").offsetWidth - padding; 
     hei = 400;
 
-    cols = eval(document.getElementById("cols").value); 
-    rows = eval(document.getElementById("rows").value);
+    cols = parseInt(document.getElementById("cols").value, 10); 
+    rows = parseInt(document.getElementById("rows").value, 10);
 
     var mazeType = document.getElementById("sltType").value;
 
@@ -511,8 +500,7 @@ function onCreate() {
         if( !( start[0].x & 1 ) ) start[0].x++; if( !( start[0].y & 1 ) ) start[0].y++;
         
         for(var i = 0; i < count; i++) {
-
-            mazes[i][start[0].x][start[0].y] = 0;
+            mazes[i][start[0].x][start[0].y] = CELL_TYPES.WALL;
         }
 
         if(document.getElementById("chkAnimated").checked) {
@@ -528,7 +516,7 @@ function onCreate() {
 
         density = document.getElementById("density").value / 100;
         start[0].x = 0;
-        start[0].x = 0;
+        start[0].y = 0;
 
         if(document.getElementById("chkAnimated").checked) {
 
@@ -555,16 +543,14 @@ function onClear() {
     for(var i = 0; i < count; i++){
         for(var j = 0; j < cols; j++){
             for( var k = 0; k < rows; k++) {
-                if(mazes[i][j][k] == 3 || mazes[i][j][k] == 4 || mazes[i][j][k] == 8 || mazes[i][j][k] == 9) {
-                    mazes[i][j][k] = 0;
+                if(mazes[i][j][k] == CELL_TYPES.SOLUTION || mazes[i][j][k] == CELL_TYPES.VISITED || 
+                   mazes[i][j][k] == CELL_TYPES.TARGET || mazes[i][j][k] == CELL_TYPES.START) {
+                    mazes[i][j][k] = CELL_TYPES.WALL;
                 }    
             }
         }
     }
 
-    for(var i = 0; i < count; i++) {
-        drawMaze(i); 
-    }
     for(var i = 0; i < count; i++) {
         drawMaze(i); 
     }
@@ -577,6 +563,6 @@ function onClear() {
     start[1].x = start[1].y = -1;
 
     end[0].x = end[0].y = -1;
-    end[0].x = end[0].y = -1;
+    end[1].x = end[1].y = -1;
 
 }
